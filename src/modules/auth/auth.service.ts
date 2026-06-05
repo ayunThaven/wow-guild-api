@@ -1,6 +1,9 @@
+// @ts-ignore
+
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../shared/prisma/prisma.service';
 import { BlizzardService } from '../blizzard/blizzard.service';
+import { JwtService } from '@nestjs/jwt';
 
 /**
  * Service d'authentification
@@ -10,6 +13,7 @@ export class AuthService {
   constructor(
     private readonly prismaService: PrismaService,
     private readonly blizzardService: BlizzardService,
+    private readonly jwtService: JwtService,
   ) {}
 
   /**
@@ -21,8 +25,10 @@ export class AuthService {
     if (!code) {
       throw new BadRequestException('Missing Battle.Net authorization code');
     }
+
     const token = await this.blizzardService.exchangeCodeForToken(code);
     const userInfo = await this.blizzardService.getUserInfo(token.access_token);
+
     const provider = 'battlenet';
     const providerAccountId = String(userInfo.id);
     const existingExternalAccount =
@@ -30,13 +36,11 @@ export class AuthService {
         where: { provider_providerAccountId: { provider, providerAccountId } },
         include: { user: true },
       });
+
     if (existingExternalAccount) {
-      return {
-        message: 'Logged in with Battle.Net.',
-        user: existingExternalAccount.user,
-        battleTag: existingExternalAccount.battleTag,
-      };
+      return this.buildAuthResponse(existingExternalAccount.user);
     }
+
     const user = await this.prismaService.user.create({
       data: {
         pseudo: userInfo.battletag,
@@ -51,9 +55,45 @@ export class AuthService {
       },
       include: { ExternalAccount: true },
     });
+
     return {
       message: 'User account created successfully with Battle.Net.',
       user,
     };
+  }
+
+  private async buildAuthResponse(user: { id: number; pseudo: string }) {
+    const accessToken = await this.jwtService.signAsync({
+      sub: user.id,
+      pseudo: user.pseudo,
+    });
+
+    return {
+      accessToken,
+      user: {
+        id: user.id,
+        pseudo: user.pseudo,
+      },
+    };
+  }
+
+  async getMe(userId: number) {
+    return this.prismaService.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        pseudo: true,
+        email: true,
+        createdAt: true,
+        updatedAt: true,
+        ExternalAccount: {
+          select: {
+            provider: true,
+            battleTag: true,
+            region: true,
+          },
+        },
+      },
+    });
   }
 }

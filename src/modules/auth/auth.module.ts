@@ -1,11 +1,35 @@
 import { Module } from '@nestjs/common';
-import { AuthService } from './auth.service';
+import { JwtModule } from '@nestjs/jwt';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { PassportModule } from '@nestjs/passport';
+import type { SignOptions } from 'jsonwebtoken';
+
 import { AuthController } from './auth.controller';
+import { AuthService } from './auth.service';
 import { BlizzardModule } from '../blizzard/blizzard.module';
+import { JwtStrategy } from './strategies/jwt.strategy';
 
 @Module({
-  providers: [AuthService],
+  imports: [
+    BlizzardModule,
+    PassportModule,
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => {
+        const expiresIn =
+          configService.get<string>('JWT_ACCESS_EXPIRES_IN') ?? '15m';
+
+        return {
+          secret: configService.getOrThrow<string>('JWT_ACCESS_SECRET'),
+          signOptions: {
+            expiresIn: expiresIn as SignOptions['expiresIn'],
+          },
+        };
+      },
+    }),
+  ],
   controllers: [AuthController],
-  imports: [BlizzardModule],
+  providers: [AuthService, JwtStrategy],
 })
 export class AuthModule {}
