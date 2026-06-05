@@ -1,6 +1,21 @@
-import { Controller, Get, Query, Redirect } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Query,
+  Redirect,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { BlizzardService } from '../blizzard/blizzard.service';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
+
+type AuthenticatedRequest = Request & {
+  user: {
+    id: number;
+    pseudo: string;
+  };
+};
 
 /**
  * Controller d'authentification
@@ -30,5 +45,11 @@ export class AuthController {
   @Get('battlenet/callback')
   async handleBattlenetCallback(@Query('code') code: string) {
     return this.authService.loginWithBattleNet(code);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('me')
+  async me(@Req() request: AuthenticatedRequest) {
+    return this.authService.getMe(request.user.id);
   }
 }
