@@ -12,6 +12,97 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Faction {
+  ALLIANCE
+  HORDE
+}
+
+enum Classes {
+  DEATHKNIGHT
+  DEMONHUNTER
+  DRUID
+  EVOKER
+  HUNTER
+  MAGE
+  MONK
+  PALADIN
+  PRIEST
+  ROGUE
+  SHAMAN
+  WARLOCK
+  WARRIOR
+}
+
+enum Races {
+  DARKIRONDWARF
+  DRACTHYR
+  DRAENEI
+  DWARF
+  EARTHEN
+  GNOME
+  HARANIR
+  HUMAN
+  KULTIRAN
+  LIGHTFORGEDDRAENEI
+  MECHAGNOME
+  NIGHTELF
+  PANDAREN
+  VOIDELF
+  WORGEN
+  BLOODELF
+  GOBLIN
+  HIGHMOUNTAINTAUREN
+  MAGHARORC
+  NIGHTBORNE
+  ORC
+  TAUREN
+  TROLL
+  UNDEAD
+  VULPERA
+  ZANDALARITROLL
+}
+
+enum Specialisations {
+  BLOOD
+  FROST
+  UNHOLY
+  HAVOC
+  VENGEANCE
+  DEVOURER
+  BALANCE
+  FERAL
+  GUARDIAN
+  RESTORATION
+  EVOKER
+  DEVASTATION
+  PRESERVATION
+  AUGMENTATION
+  BEASTMASTERY
+  MARKSMANSHIP
+  SURVIVAL
+  ARCANE
+  FIRE
+  MONK
+  BREWMASTER
+  MISTWEAVER
+  WINDWALKER
+  HOLY
+  PROTECTION
+  RETRIBUTION
+  DISCIPLINE
+  SHADOW
+  ASSASSINATION
+  OUTLAW
+  SUBTLETY
+  ELEMENTAL
+  ENHANCEMENT
+  AFFLICTION
+  DEMONOLOGY
+  DESTRUCTION
+  ARMS
+  FURY
+}
+
 model User {
   id              Int               @id @default(autoincrement())
   email           String?           @unique
@@ -20,6 +111,7 @@ model User {
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
   ExternalAccount ExternalAccount[]
+  characters      Character[]
 }
 
 model ExternalAccount {
@@ -35,4 +127,27 @@ model ExternalAccount {
   user User @relation(fields: [userId], references: [id])
 
   @@unique([provider, providerAccountId])
+}
+
+model Character {
+  id                  Int             @id @default(autoincrement())
+  guildId             Int
+  userId              Int
+  gameVersionId       Int
+  name                String
+  realm               String
+  region              String
+  class               Classes
+  race                Races
+  faction             Faction
+  level               Int
+  mainSpec            Specialisations
+  secondarySpec       Specialisations
+  isMain              Boolean
+  blizzardCharacterId String
+  lastSyncAt          DateTime
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([region, realm, name])
 }
