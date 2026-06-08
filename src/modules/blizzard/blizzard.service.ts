@@ -49,6 +49,12 @@ type BlizzardWowCharacters = {
 export class BlizzardService {
   constructor(private readonly configService: ConfigService) {}
 
+  /**
+   * Construit l'URL d'autorisation Battle.net.
+   *
+   * L'utilisateur est redirigé vers cette URL afin d'autoriser la connexion OAuth
+   * et l'accès à son profil WoW.
+   */
   getAuthorizationUrl(): string {
     const clientId = this.configService.getOrThrow<string>(
       'BATTLE_NET_CLIENT_ID',
@@ -131,6 +137,12 @@ export class BlizzardService {
     }
   }
 
+  /**
+   * Récupère le profil WoW du compte Battle.net authentifié.
+   *
+   * Cet endpoint permet de récupérer les personnages liés au compte de l'utilisateur.
+   * Pour WoW Classic, le namespace utilisé doit être un namespace de profil Classic.
+   */
   async getWowCharacters(accessToken: string): Promise<BlizzardWowCharacters> {
     const region = this.configService.get<string>('BATTLE_NET_REGION');
     const namespace =
@@ -138,7 +150,7 @@ export class BlizzardService {
       `profile-classic-${region}`;
     const locale = this.configService.get<string>('BLIZZARD_LOCALE') ?? 'fr_FR';
 
-    const response = await axios.get(
+    const response = await axios.get<BlizzardWowCharacters>(
       `https://${region}.api.blizzard.com/profile/user/wow`,
       {
         params: {

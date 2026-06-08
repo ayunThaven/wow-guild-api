@@ -40,6 +40,12 @@ export class CharactersService {
     });
   }
 
+  /**
+   * Synchronise tous les personnages WoW du compte Battle.net de l'utilisateur.
+   *
+   * Les personnages déjà existants sont mis à jour grâce à leur identifiant Blizzard.
+   * Les nouveaux personnages sont créés automatiquement et liés à l'utilisateur connecté.
+   */
   async syncFromBattleNet(userId: number, accessToken: string) {
     const profile = await this.blizzardService.getWowCharacters(accessToken);
 
@@ -102,12 +108,21 @@ export class CharactersService {
     return syncedCharacters;
   }
 
+  /**
+   * Convertit une faction retournée par Blizzard vers l'enum Prisma locale.
+   */
   private mapFaction(faction?: string): Faction | null {
     if (faction === 'HORDE') return Faction.HORDE;
     if (faction === 'ALLIANCE') return Faction.ALLIANCE;
     return null;
   }
 
+  /**
+   * Convertit un identifiant de classe Blizzard vers l'enum Prisma locale.
+   *
+   * Les identifiants de classe Blizzard sont plus fiables que les noms,
+   * car les noms peuvent changer selon la langue utilisée par l'API.
+   */
   private mapClass(classId?: number): Classes | null {
     const map: Record<number, Classes> = {
       1: Classes.WARRIOR,

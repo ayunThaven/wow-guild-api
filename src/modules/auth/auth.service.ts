@@ -67,6 +67,13 @@ export class AuthService {
     return authResponse;
   }
 
+  /**
+   * Construit la réponse d'authentification de l'API.
+   *
+   * Battle.net sert uniquement à vérifier l'identité de l'utilisateur.
+   * Ensuite, l'application utilise son propre JWT pour authentifier
+   * les appels API.
+   */
   private async buildAuthResponse(user: { id: number; pseudo: string }) {
     const accessToken = await this.jwtService.signAsync({
       sub: user.id,
@@ -82,6 +89,9 @@ export class AuthService {
     };
   }
 
+  /**
+   * Retourne l'utilisateur actuellement connecté avec ses comptes externes liés.
+   */
   async getMe(userId: number) {
     return this.prismaService.user.findUnique({
       where: { id: userId },
