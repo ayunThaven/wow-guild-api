@@ -1,0 +1,6 @@
+-- AlterTable
+ALTER TABLE "Character" ALTER COLUMN "race" DROP NOT NULL,
+ALTER COLUMN "mainSpec" DROP NOT NULL,
+ALTER COLUMN "secondarySpec" DROP NOT NULL,
+ALTER COLUMN "blizzardCharacterId" DROP NOT NULL,
+ALTER COLUMN "lastSyncAt" DROP NOT NULL;

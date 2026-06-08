@@ -1,9 +1,8 @@
-// @ts-ignore
-
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../shared/prisma/prisma.service';
 import { BlizzardService } from '../blizzard/blizzard.service';
 import { JwtService } from '@nestjs/jwt';
+import { CharactersService } from '../characters/characters.service';
 
 /**
  * Service d'authentification
@@ -13,6 +12,7 @@ export class AuthService {
   constructor(
     private readonly prismaService: PrismaService,
     private readonly blizzardService: BlizzardService,
+    private readonly characterService: CharactersService,
     private readonly jwtService: JwtService,
   ) {}
 
@@ -38,6 +38,10 @@ export class AuthService {
       });
 
     if (existingExternalAccount) {
+      await this.syncCharactersSafely(
+        existingExternalAccount.user.id,
+        token.access_token,
+      );
       return this.buildAuthResponse(existingExternalAccount.user);
     }
 
@@ -56,10 +60,11 @@ export class AuthService {
       include: { ExternalAccount: true },
     });
 
-    return {
-      message: 'User account created successfully with Battle.Net.',
-      user,
-    };
+    const authResponse = await this.buildAuthResponse(user);
+
+    await this.syncCharactersSafely(user.id, token.access_token);
+
+    return authResponse;
   }
 
   private async buildAuthResponse(user: { id: number; pseudo: string }) {
@@ -95,5 +100,13 @@ export class AuthService {
         },
       },
     });
+  }
+
+  private async syncCharactersSafely(userId: number, accessToken: string) {
+    try {
+      await this.characterService.syncFromBattleNet(userId, accessToken);
+    } catch (error) {
+      console.error('[Auth] Characters sync failed:', error);
+    }
   }
 }

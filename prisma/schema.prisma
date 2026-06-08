@@ -15,6 +15,7 @@ datasource db {
 enum Faction {
   ALLIANCE
   HORDE
+  NEUTRAL
 }
 
 enum Classes {
@@ -130,24 +131,26 @@ model ExternalAccount {
 }
 
 model Character {
-  id                  Int             @id @default(autoincrement())
-  guildId             Int
+  id                  Int              @id @default(autoincrement())
+  guildId             Int?
   userId              Int
   gameVersionId       Int
   name                String
   realm               String
   region              String
   class               Classes
-  race                Races
+  race                Races?
   faction             Faction
   level               Int
-  mainSpec            Specialisations
-  secondarySpec       Specialisations
-  isMain              Boolean
-  blizzardCharacterId String
-  lastSyncAt          DateTime
+  mainSpec            Specialisations?
+  secondarySpec       Specialisations?
+  isMain              Boolean          @default(false)
+  blizzardCharacterId String?          @unique
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  lastSyncAt          DateTime?        @default(now())
 
   user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([region, realm, name])
+  @@unique([region, realm, name, gameVersionId])
 }

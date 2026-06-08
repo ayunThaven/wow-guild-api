@@ -14,6 +14,34 @@ type BattleNetTokenResponse = {
   scope?: string;
 };
 
+type BlizzardWowCharacters = {
+  wow_accounts?: Array<{
+    id: number;
+    characters?: Array<{
+      id: number;
+      name: string;
+      level?: number;
+      realm?: {
+        id?: number;
+        slug?: string;
+        name?: string;
+      };
+      playable_class?: {
+        id?: number;
+        name?: string;
+      };
+      playable_race?: {
+        id?: number;
+        name?: string;
+      };
+      faction?: {
+        type?: string;
+        name?: string;
+      };
+    }>;
+  }>;
+};
+
 /**
  * Service pour l'authentification depuis Blizzard
  */
@@ -33,7 +61,7 @@ export class BlizzardService {
       client_id: clientId,
       redirect_uri: redirectUri,
       response_type: 'code',
-      scope: 'openid',
+      scope: 'openid wow.profile',
       state,
     });
 
@@ -101,5 +129,28 @@ export class BlizzardService {
         'Unable to fetch user information',
       );
     }
+  }
+
+  async getWowCharacters(accessToken: string): Promise<BlizzardWowCharacters> {
+    const region = this.configService.get<string>('BATTLE_NET_REGION');
+    const namespace =
+      this.configService.get<string>('BLIZZARD_PROFILE_NAMESPACE') ??
+      `profile-classic-${region}`;
+    const locale = this.configService.get<string>('BLIZZARD_LOCALE') ?? 'fr_FR';
+
+    const response = await axios.get(
+      `https://${region}.api.blizzard.com/profile/user/wow`,
+      {
+        params: {
+          namespace,
+          locale,
+        },
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      },
+    );
+
+    return response.data;
   }
 }
