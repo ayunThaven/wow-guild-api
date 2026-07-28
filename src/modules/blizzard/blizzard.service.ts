@@ -206,7 +206,7 @@ export class BlizzardService {
 
     const namespace =
       this.configService.get<string>('BLIZZARD_PROFILE_NAMESPACE') ??
-      'profile-classic-${region}`';
+      `profile-classic-${region}`;
 
     const locale = this.configService.get<string>('BLIZZARD_LOCALE') ?? 'fr_FR';
 
