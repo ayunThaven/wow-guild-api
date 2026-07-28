@@ -3,7 +3,13 @@ import { PrismaService } from '../../shared/prisma/prisma.service';
 import { CreateCharacterDto } from './dto/create-character.dto';
 import { BlizzardService } from '../blizzard/blizzard.service';
 import { ConfigService } from '@nestjs/config';
-import { Character, Classes, Faction } from '@prisma/client';
+import {
+  Character,
+  Classes,
+  Faction,
+  Races,
+  Specialisations,
+} from '@prisma/client';
 
 @Injectable()
 export class CharactersService {
@@ -41,6 +47,28 @@ export class CharactersService {
   }
 
   /**
+   * Retourne tous les personnages liés à un utilisateur.
+   *
+   * Les personnages principaux sont remontés en premier, puis les autres
+   * sont triés par nom.
+   */
+  async findMine(userId: number) {
+    return this.prismaService.character.findMany({
+      where: {
+        userId,
+      },
+      orderBy: [
+        {
+          isMain: 'desc',
+        },
+        {
+          name: 'asc',
+        },
+      ],
+    });
+  }
+
+  /**
    * Synchronise tous les personnages WoW du compte Battle.net de l'utilisateur.
    *
    * Les personnages déjà existants sont mis à jour grâce à leur identifiant Blizzard.
@@ -66,11 +94,40 @@ export class CharactersService {
 
       const blizzardCharacterId = `${region}:${character.realm?.id ?? realm}:${character.id}`;
 
+      const race = this.mapRace(character.playable_race?.id);
       const characterClass = this.mapClass(character.playable_class?.id);
       const faction = this.mapFaction(character.faction?.type);
 
       if (!characterClass || !faction || !character.level) {
         continue;
+      }
+
+      let mainSpec: Specialisations | null = null;
+      let secondarySpec: Specialisations | null = null;
+      try {
+        const specializations =
+          await this.blizzardService.getCharacterSpecializations(
+            accessToken,
+            realm,
+            character.name,
+          );
+
+        mainSpec = this.mapSpecialization(
+          specializations.active_specialization?.id,
+        );
+
+        const availableSpecs =
+          specializations.specializations
+            ?.map((spec) => this.mapSpecialization(spec.specialization?.id))
+            .filter((spec): spec is Specialisations => spec !== null) ?? [];
+
+        secondarySpec =
+          availableSpecs.find((spec) => spec !== mainSpec) ?? null;
+      } catch (error) {
+        console.error(error);
+        console.warn(
+          `[CharactersSync] Impossible de récupérer les spécialisations de ${character.name}`,
+        );
       }
 
       const synced = await this.prismaService.character.upsert({
@@ -81,22 +138,29 @@ export class CharactersService {
           userId,
           name: character.name,
           realm,
-          region: region.toUpperCase(),
+          region,
+          race,
           level: character.level,
-          faction: faction,
+          faction,
           class: characterClass,
+          mainSpec: mainSpec ?? undefined,
+          secondarySpec: secondarySpec ?? undefined,
           lastSyncAt: new Date(),
         },
         create: {
           userId,
+          guildId: null,
           gameVersionId,
           blizzardCharacterId,
           name: character.name,
           realm,
-          region: region.toUpperCase(),
-          level: character.level,
-          faction: faction,
+          region,
+          race,
           class: characterClass,
+          faction,
+          level: character.level,
+          mainSpec,
+          secondarySpec,
           isMain: false,
           lastSyncAt: new Date(),
         },
@@ -141,5 +205,89 @@ export class CharactersService {
     };
 
     return classId ? (map[classId] ?? null) : null;
+  }
+
+  private mapRace(raceId?: number) {
+    const map: Record<number, Races> = {
+      1: Races.HUMAN,
+      2: Races.ORC,
+      3: Races.DWARF,
+      4: Races.NIGHTELF,
+      5: Races.UNDEAD,
+      6: Races.TAUREN,
+      7: Races.GNOME,
+      8: Races.TROLL,
+      9: Races.GOBLIN,
+      10: Races.BLOODELF,
+      11: Races.DRAENEI,
+      22: Races.WORGEN,
+      24: Races.PANDAREN,
+      25: Races.PANDAREN,
+      26: Races.PANDAREN,
+    };
+
+    return raceId ? (map[raceId] ?? null) : null;
+  }
+
+  private mapSpecialization(specId?: number): Specialisations | null {
+    const map: Record<number, Specialisations> = {
+      // Death Knight
+      250: Specialisations.BLOOD,
+      251: Specialisations.FROST,
+      252: Specialisations.UNHOLY,
+
+      // Druid
+      102: Specialisations.BALANCE,
+      103: Specialisations.FERAL,
+      104: Specialisations.GUARDIAN,
+      105: Specialisations.RESTORATION,
+
+      // Hunter
+      253: Specialisations.BEASTMASTERY,
+      254: Specialisations.MARKSMANSHIP,
+      255: Specialisations.SURVIVAL,
+
+      // Mage
+      62: Specialisations.ARCANE,
+      63: Specialisations.FIRE,
+      64: Specialisations.FROST,
+
+      // Monk
+      268: Specialisations.BREWMASTER,
+      270: Specialisations.MISTWEAVER,
+      269: Specialisations.WINDWALKER,
+
+      // Paladin
+      65: Specialisations.HOLY,
+      66: Specialisations.PROTECTION,
+      70: Specialisations.RETRIBUTION,
+
+      // Priest
+      256: Specialisations.DISCIPLINE,
+      257: Specialisations.HOLY,
+      258: Specialisations.SHADOW,
+
+      // Rogue
+      259: Specialisations.ASSASSINATION,
+      260: Specialisations.OUTLAW,
+      261: Specialisations.SUBTLETY,
+
+      // Shaman
+      262: Specialisations.ELEMENTAL,
+      263: Specialisations.ENHANCEMENT,
+      264: Specialisations.RESTORATION,
+
+      // Warlock
+      265: Specialisations.AFFLICTION,
+      266: Specialisations.DEMONOLOGY,
+      267: Specialisations.DESTRUCTION,
+
+      // Warrior
+      71: Specialisations.ARMS,
+      72: Specialisations.FURY,
+      73: Specialisations.PROTECTION,
+    };
+
+    return specId ? (map[specId] ?? null) : null;
   }
 }

@@ -1,4 +1,4 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { CharactersService } from './characters.service';
 import { CreateCharacterDto } from './dto/create-character.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -16,5 +16,16 @@ export class CharactersController {
     @Body() characterDto: CreateCharacterDto,
   ) {
     return this.characterService.create(user.id, characterDto);
+  }
+
+  @Get('me')
+  /**
+   * Retourne les personnages liés à l'utilisateur connecté.
+   *
+   * Les personnages sont normalement créés automatiquement lors de la connexion
+   * Battle.net, puis mis à jour à chaque nouvelle connexion.
+   */
+  findMine(@CurrentUser() user: AuthenticatedUser) {
+    return this.characterService.findMine(user.id);
   }
 }

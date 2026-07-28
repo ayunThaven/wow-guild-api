@@ -42,6 +42,37 @@ type BlizzardWowCharacters = {
   }>;
 };
 
+export type BlizzardCharacterSpecializations = {
+  specializations?: Array<{
+    specialization?: {
+      id?: number;
+      name?: string;
+    };
+    talents?: unknown[];
+    specialization_name?: string;
+  }>;
+
+  active_specialization?: {
+    id?: number;
+    name?: string;
+  };
+
+  specialization_groups?: Array<{
+    is_active?: boolean;
+    glyphs?: unknown[];
+  }>;
+
+  character?: {
+    id?: number;
+    name?: string;
+    realm?: {
+      id?: number;
+      name?: string;
+      slug?: string;
+    };
+  };
+};
+
 /**
  * Service pour l'authentification depuis Blizzard
  */
@@ -152,6 +183,37 @@ export class BlizzardService {
 
     const response = await axios.get<BlizzardWowCharacters>(
       `https://${region}.api.blizzard.com/profile/user/wow`,
+      {
+        params: {
+          namespace,
+          locale,
+        },
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      },
+    );
+
+    return response.data;
+  }
+
+  async getCharacterSpecializations(
+    accessToken: string,
+    realmSlug: string,
+    characterName: string,
+  ): Promise<BlizzardCharacterSpecializations> {
+    const region = this.configService.get<string>('BATTLE_NET_REGION');
+
+    const namespace =
+      this.configService.get<string>('BLIZZARD_PROFILE_NAMESPACE') ??
+      'profile-classic-${region}`';
+
+    const locale = this.configService.get<string>('BLIZZARD_LOCALE') ?? 'fr_FR';
+
+    const normalizedCharacterName = characterName.toLowerCase();
+
+    const response = await axios.get<BlizzardCharacterSpecializations>(
+      `https://${region}.api.blizzard.com/profile/wow/character/${realmSlug}/${normalizedCharacterName}/specializations`,
       {
         params: {
           namespace,
