@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../shared/prisma/prisma.service';
 import { CreateCharacterDto } from './dto/create-character.dto';
 import { BlizzardService } from '../blizzard/blizzard.service';
@@ -289,5 +289,37 @@ export class CharactersService {
     };
 
     return specId ? (map[specId] ?? null) : null;
+  }
+
+  /**
+   * Retourne un personnage précis appartenant à un utilisateur.
+   *
+   * Cette méthode vérifie que le personnage demandé appartient bien à
+   * l'utilisateur connecté afin d'éviter l'accès aux personnages d'autres comptes.
+   */
+  async findOne(userId: number, characterId: number) {
+    const character = await this.prismaService.character.findFirst({
+      where: {
+        id: characterId,
+        userId,
+      },
+      select: {
+        name: true,
+        realm: true,
+        class: true,
+        race: true,
+        faction: true,
+        level: true,
+        mainSpec: true,
+        secondarySpec: true,
+        isMain: true,
+      },
+    });
+
+    if (!character) {
+      throw new NotFoundException('Personnage introuvable');
+    }
+
+    return character;
   }
 }

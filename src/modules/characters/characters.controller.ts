@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseIntPipe,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { CharactersService } from './characters.service';
 import { CreateCharacterDto } from './dto/create-character.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -27,5 +35,13 @@ export class CharactersController {
    */
   findMine(@CurrentUser() user: AuthenticatedUser) {
     return this.characterService.findMine(user.id);
+  }
+
+  @Get(':id')
+  findOne(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseIntPipe) characterId: number,
+  ) {
+    return this.characterService.findOne(user.id, characterId);
   }
 }
