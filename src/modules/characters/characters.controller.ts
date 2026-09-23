@@ -4,6 +4,7 @@ import {
   Get,
   Param,
   ParseIntPipe,
+  Patch,
   Post,
   UseGuards,
 } from '@nestjs/common';
@@ -43,5 +44,13 @@ export class CharactersController {
     @Param('id', ParseIntPipe) characterId: number,
   ) {
     return this.characterService.findOne(user.id, characterId);
+  }
+
+  @Patch(':id/main')
+  setMain(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.characterService.setMain(user.id, id);
   }
 }

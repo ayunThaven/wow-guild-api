@@ -173,6 +173,81 @@ export class CharactersService {
   }
 
   /**
+   * Retourne un personnage précis appartenant à un utilisateur.
+   *
+   * Cette méthode vérifie que le personnage demandé appartient bien à
+   * l'utilisateur connecté afin d'éviter l'accès aux personnages d'autres comptes.
+   */
+  async findOne(userId: number, characterId: number) {
+    const character = await this.prismaService.character.findFirst({
+      where: {
+        id: characterId,
+        userId,
+      },
+      select: {
+        name: true,
+        realm: true,
+        class: true,
+        race: true,
+        faction: true,
+        level: true,
+        mainSpec: true,
+        secondarySpec: true,
+        isMain: true,
+      },
+    });
+
+    if (!character) {
+      throw new NotFoundException('Personnage introuvable');
+    }
+
+    return character;
+  }
+
+  /**
+   * Définit un personnage comme personnage principal de l'utilisateur.
+   *
+   * Tous les autres personnages de l'utilisateur sont automatiquement
+   * retirés du statut de personnage principal.
+   *
+   * Une erreur 404 est renvoyée si le personnage n'existe pas
+   * ou n'appartient pas à l'utilisateur.
+   */
+  async setMain(userId: number, characterId: number) {
+    const character = await this.prismaService.character.findFirst({
+      where: {
+        id: characterId,
+        userId,
+      },
+    });
+
+    if (!character) {
+      throw new NotFoundException('Personnage introuvable');
+    }
+
+    return this.prismaService.$transaction(async (prisma) => {
+      await prisma.character.updateMany({
+        where: {
+          userId,
+          isMain: true,
+        },
+        data: {
+          isMain: false,
+        },
+      });
+
+      return prisma.character.update({
+        where: {
+          id: characterId,
+        },
+        data: {
+          isMain: true,
+        },
+      });
+    });
+  }
+
+  /**
    * Convertit une faction retournée par Blizzard vers l'enum Prisma locale.
    */
   private mapFaction(faction?: string): Faction | null {
@@ -289,37 +364,5 @@ export class CharactersService {
     };
 
     return specId ? (map[specId] ?? null) : null;
-  }
-
-  /**
-   * Retourne un personnage précis appartenant à un utilisateur.
-   *
-   * Cette méthode vérifie que le personnage demandé appartient bien à
-   * l'utilisateur connecté afin d'éviter l'accès aux personnages d'autres comptes.
-   */
-  async findOne(userId: number, characterId: number) {
-    const character = await this.prismaService.character.findFirst({
-      where: {
-        id: characterId,
-        userId,
-      },
-      select: {
-        name: true,
-        realm: true,
-        class: true,
-        race: true,
-        faction: true,
-        level: true,
-        mainSpec: true,
-        secondarySpec: true,
-        isMain: true,
-      },
-    });
-
-    if (!character) {
-      throw new NotFoundException('Personnage introuvable');
-    }
-
-    return character;
   }
 }
